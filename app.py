@@ -1,20 +1,52 @@
 
-# import mysql.connector
+'''
+
+GET /personnel - returns all personnel records
+
+GET /personnel/id - returns a personnel record
+
+PUT /personnel/id - updates a personnel record
+
+DELETE /personnel/id - removes a personnel record
+
+POST /personnel - adds a personnel record
+
+'''
+
 import sqlalchemy as db
 
 from fastapi import FastAPI
 
+from sqlalchemy import Column, String, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 app = FastAPI()
+
+Base = declarative_base()
 
 user = "admin"
 password = "admin_pass"
 host = "personnel_db"
 database = "personnel_db"
 
+class Personnel(Base):
+    __tablename__ = "PERSONNEL"
+
+    id = Column(String, primary_key=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    email = Column(String)
+    city = Column(String)
+    country = Column(String)
+    company = Column(String)
+
+    def __repr__(self) -> str:
+        return f"<Personnel({self.id}, {self.first_name}, {self.last_name}, {self.email}, {self.city}, {self.country}, {self.company})"
+
 def get_db_engine():
 
     try:
-        engine = db.create_engine(f"mysql+pymysql://{user}:{password}@{host}/{database}", echo=True)
+        engine = create_engine(f"mysql+pymysql://{user}:{password}@{host}/{database}", echo=True)
     
     except Exception as err:
         print(f"Unable to get DB engine: {err}")
@@ -22,53 +54,34 @@ def get_db_engine():
     
     return engine
 
-def get_personnel_table():
+def get_db_session(engine):
 
     try:
-
-        engine = get_db_engine()
-        connection = engine.connect()
-        metadata = db.MetaData()
-
-        personnel = db.Table("PERSONNEL", metadata, autoload=True, autoload_with=engine)
+        Session = sessionmaker(bind=engine)
 
     except Exception as err:
-        print(f"ERROR: {err}")
-        personnel = None
+        print(f"Unable to create DB session: {err}")
+        return None
 
-    return personnel
+    return Session()
 
 @app.get("/")
 def read_root():
     return { "Personnel Demo app": "Welcome to Personnel Demo app" }
 
-@app.get("/db")
-def read_db():
+@app.get("/personnel/")
+def get_personnel_records():
 
-    # try:
-    #     mydb = mysql.connector.connect(
-    #     host="personnel_db",
-    #     user="admin",
-    #     password="admin_pass",
-    #     database="personnel_db"
-    #     )
+    engine = get_db_engine()
+    session = get_db_session(engine)
 
-    # except Exception as err:
-    #     print(f"Unable to connect: {err}")
-    #     mydb = None
-
-    # mycursor = mydb.cursor()
-
-    # mycursor.execute("SELECT * FROM PERSONNEL LIMIT 10")
-
-    # myresult = mycursor.fetchall()
-
-    personnel = get_personnel_table()
+    personnel_records = []
 
     try:
-        colunns = personnel.columns.keys()
+        for instance in session.query(Personnel).order_by(Personnel.last_name):
+            personnel_records.append(instance)
 
     except Exception as err:
-        print(f"Unable to get PERSONNEL columns: {err}")
+        print("ERROR: {err}")
 
-    return { "Personnel Demo db": colunns }
+    return { "Personnel": personnel_records }
