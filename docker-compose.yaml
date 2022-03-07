@@ -1,6 +1,35 @@
 version: "3"
 services:
-  fastapi_template:
+  personnel_api:
+    container_name: personnel_api
     build: .
     ports:
       - 8000:8000
+
+  personnel_db:
+    container_name: personnel_db
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_DATABASE: personnel_db
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin_pass
+    volumes:
+      - personnel-datavolume:/var/lib/mysql
+    ports:
+      - 3306:3306
+    platform: linux/amd64
+
+  adminer:
+    container_name: personnel_db_adminer
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    depends_on: 
+      - personnel_db
+
+volumes:
+  personnel-datavolume:
